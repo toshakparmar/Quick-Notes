@@ -110,16 +110,16 @@ npm run dev
 
 #### Notes
 
-    - GET /quick-notes - Get all notes
-    - GET /quick-notes/get-note/:id - Get note by ID
-    - POST /quick-notes/create - Create new note
-    - PUT /quick-notes/update/:id - Update note
-    - PUT /quick-notes/update-status/:id - Update note status
-    - DELETE /quick-notes/delete/:id - Delete note
+- GET /quick-notes - Get all notes
+- GET /quick-notes/get-note/:id - Get note by ID
+- POST /quick-notes/create - Create new note
+- PUT /quick-notes/update/:id - Update note
+- PUT /quick-notes/update-status/:id - Update note status
+- DELETE /quick-notes/delete/:id - Delete note
 
 #### AI Assistant
 
-    - POST /quick-notes/assistant - Interact with AI assistant
+- POST /quick-notes/assistant - Interact with AI assistant
 
 ### Contributing
 
