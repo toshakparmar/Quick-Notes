@@ -123,26 +123,26 @@ npm run dev
 
 ### Contributing
 
-    - Fork the repository
-    - Create your feature branch (git checkout -b feature/amazing-feature)
-    - Commit your changes (git commit -m 'Add some amazing feature')
-    - Push to the branch (git push origin feature/amazing-feature)
-    - Open a Pull Request
+- Fork the repository
+- Create your feature branch (git checkout -b feature/amazing-feature)
+- Commit your changes (git commit -m 'Add some amazing feature')
+- Push to the branch (git push origin feature/amazing-feature)
+- Open a Pull Request
 
 ### License
 
-    This project is licensed under the ISC License.
+- This project is licensed under the ISC License.
 
 ### Acknowledgments
 
-    - Built with React + Vite
-    - Styled with Tailwind CSS
-    - AI capabilities powered by Google's Gemini
-    - Database hosted on MongoDB Atlas
+- Built with React + Vite
+- Styled with Tailwind CSS
+- AI capabilities powered by Google's Gemini
+- Database hosted on MongoDB Atlas
 
 ### Build by Toshak Parmar with Details...
 
-    - Email: toshakparmar2000@gmail.com
-    - Portfolio: https://codesmachers.netlify.app/
-    - Dev-Soft-Ai: https://dev-soft-ai.netlify.app/
-    - Linkdin: https://www.linkedin.com/in/toshak-parmar-codesmachers-673968263/
+- Email: toshakparmar2000@gmail.com
+- Portfolio: https://codesmachers.netlify.app/
+- Dev-Soft-Ai: https://dev-soft-ai.netlify.app/
+- Linkdin: https://www.linkedin.com/in/toshak-parmar-codesmachers-673968263/
