@@ -12,11 +12,11 @@ const NotesArea = forwardRef(({ notes, onNoteAction, onStatusChange }, ref) => {
     }, [width]);
 
     return (
-        <div ref={ref}
+        <div
             className="w-full h-full mx-auto overflow-y-scroll
                         scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800/50
                         hover:scrollbar-thumb-zinc-500">
-            <div className="grid auto-rows-max
+            <div ref={ref} className="grid auto-rows-max
                           grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6
                           gap-2 xs:gap-3 sm:gap-4 md:gap-5
                           place-items-center
