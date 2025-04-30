@@ -13,14 +13,15 @@ const NotesArea = forwardRef(({ notes, onNoteAction, onStatusChange }, ref) => {
 
     return (
         <div
-            className="w-full h-full mx-auto overflow-y-scroll
-                        scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800/50
-                        hover:scrollbar-thumb-zinc-500">
-            <div ref={ref} className="grid auto-rows-max
-                          grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6
-                          gap-2 xs:gap-3 sm:gap-4 md:gap-5
-                          place-items-center
-                          p-2 xs:p-3 sm:p-4">
+            className="w-full h-full mx-auto overflow-y-scroll -mt-1
+                      scrollbar-thin scrollbar-thumb-zinc-600 scrollbar-track-zinc-800/50
+                      hover:scrollbar-thumb-zinc-500">
+            <div ref={ref}
+                className="grid auto-rows-max
+                           grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6
+                           gap-2 xs:gap-3
+                           place-items-center
+                           px-1 sm:px-2 py-1">
                 <AnimatePresence mode="sync" key={key}>
                     {notes.map((note, index) => (
                         <NoteCard

@@ -1,34 +1,68 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8080/quick-notes";
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
+const apiService = axios.create({
+  baseURL: "http://localhost:8080",
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-export const apiService = {
-  get: async (endpoint) => {
-    const response = await api.get(endpoint);
-    return response.data;
-  },
+// Update response interceptor
+apiService.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    console.error("API Error:", error.response?.data || error.message);
 
-  post: async (endpoint, data) => {
-    const response = await api.post(endpoint, data);
-    return response.data;
-  },
+    // Format error message based on server response
+    if (error.response?.status === 500) {
+      // Log detailed error for debugging
+      console.error("Server error details:", error.response?.data);
+      error.message = "Server error occurred. Please try again later.";
+    }
 
-  put: async (endpoint, data) => {
-    const response = await api.put(endpoint, data);
-    return response.data;
-  },
+    return Promise.reject({
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+      data: error.response?.data,
+    });
+  }
+);
 
-  delete: async (endpoint) => {
-    const response = await api.delete(endpoint);
-    return response.data;
-  },
+const get = async (url) => {
+  try {
+    return await apiService.get(url);
+  } catch (error) {
+    throw error;
+  }
 };
 
-export default apiService;
+const post = async (url, data) => {
+  try {
+    return await apiService.post(url, data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+const put = async (url, data) => {
+  try {
+    return await apiService.put(url, data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+const del = async (url) => {
+  try {
+    return await apiService.delete(url);
+  } catch (error) {
+    throw error;
+  }
+};
+
+export default {
+  get,
+  post,
+  put,
+  delete: del,
+};

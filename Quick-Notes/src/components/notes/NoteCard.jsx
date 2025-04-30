@@ -30,17 +30,22 @@ const NoteCard = ({ note, dragConstraints, onDelete, onEdit, onView, onStatusCha
       dragTransition={{ bounceStiffness: 300, bounceDamping: 20 }}
       className="w-[280px] xs:w-[200px] sm:w-[220px] md:w-[200px] lg:w-[220px]
                  h-[320px] xs:h-[240px] sm:h-[260px] md:h-[240px] lg:h-[260px]
-                 rounded-[40px] bg-zinc-800/90 text-white
+                 rounded-[40px] bg-zinc-800/90 text-white relative
                  cursor-grab active:cursor-grabbing
                  hover:shadow-lg transition-shadow duration-200"
       onDoubleClick={() => onView(note)}
     >
+      {/* Add note number badge */}
+      <div className="absolute -left-1 -top-1 bg-blue-600 text-white text-xs font-medium
+                    px-2 py-1 rounded-full shadow-md z-10">
+        #{note.noteId}
+      </div>
+
       <div className="flex flex-col h-full">
-        {/* Header */}
+        {/* Header - removed noteId from here since we have the badge */}
         <div className="flex items-center justify-between p-3 xs:p-4">
           <div className="flex items-center gap-1.5 xs:gap-2">
             <HiOutlineClipboardDocumentList className="text-sm xs:text-base text-zinc-400" />
-            <span className="text-xs xs:text-sm text-zinc-400">#{note.noteId}</span>
           </div>
           <button
             onClick={(e) => {

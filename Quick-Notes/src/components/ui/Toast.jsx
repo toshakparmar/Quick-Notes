@@ -12,7 +12,8 @@ const Toast = ({ message, type = "success", onClose }) => {
       initial={{ opacity: 0, y: -50 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -50 }}
-      className={`fixed top-4 right-4 p-4 rounded-lg text-white shadow-lg z-50 ${toastColors[type]}`}
+      className={`fixed top-20 right-4 p-4 rounded-lg text-white shadow-lg z-40 
+                  ${toastColors[type]}`}
     >
       <div className="flex items-center gap-2">
         <span>{message}</span>

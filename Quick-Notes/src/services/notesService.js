@@ -3,10 +3,10 @@ import apiService from "./apiService";
 const notesService = {
   getAllNotes: async () => {
     try {
-      return await apiService.get("/");
+      return await apiService.get("/quick-notes"); // Updated endpoint
     } catch (error) {
       console.error("Error fetching notes:", error);
-      throw new Error("Failed to fetch notes");
+      throw error;
     }
   },
 
