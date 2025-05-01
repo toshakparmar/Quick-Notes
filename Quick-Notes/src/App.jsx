@@ -45,6 +45,34 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Add new Connection Status component
+const ServerStatusBanner = ({ visible, onRetry, onDismiss }) => {
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 
+                   bg-red-600/90 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg 
+                   flex items-center gap-3 text-white max-w-md w-full">
+      <div className="flex-1">
+        <p className="font-medium">Backend server connection error</p>
+        <p className="text-xs text-red-100">The app is running in demo mode with limited functionality</p>
+      </div>
+      <button
+        onClick={onRetry}
+        className="px-3 py-1 bg-white text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+      >
+        Retry
+      </button>
+      <button
+        onClick={onDismiss}
+        className="px-2 py-1 hover:bg-red-700/50 rounded-lg text-sm"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+};
+
 const App = () => {
   const { user, loading, authError, refreshUser } = useAuth();
   const { notes, loading: notesLoading, error, createNote, updateNote, deleteNote } = useNotes();
@@ -52,6 +80,9 @@ const App = () => {
   const { toast, showToast, hideToast } = useToast();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
+  const [serverError, setServerError] = useState(false);
+  const [dismissedError, setDismissedError] = useState(false);
 
   // Show auth errors
   useEffect(() => {
@@ -92,12 +123,32 @@ const App = () => {
     };
   }, [refreshUser]);
 
+  // Handle search from Navbar
+  const handleSearch = (query, results = null) => {
+    setSearchQuery(query);
+
+    // If search results were provided from the backend, use them
+    if (results) {
+      setSearchResults(results);
+    } else {
+      // Otherwise clear search results to use client-side filtering
+      setSearchResults(null);
+    }
+  };
+
   const filteredNotes = useMemo(() => {
+    // If we have server-side search results, use those
+    if (searchResults !== null) {
+      return searchResults;
+    }
+
+    // Otherwise filter client-side
     if (!searchQuery.trim()) return notes;
+
     return notes.filter(note =>
       note.note.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [notes, searchQuery]);
+  }, [notes, searchQuery, searchResults]);
 
   // Single effect for server reconnection
   useEffect(() => {
@@ -110,6 +161,25 @@ const App = () => {
     return () => window.removeEventListener('vite:reconnect', handleServerReconnect);
   }, []);
 
+  // Handle server connection status
+  useEffect(() => {
+    if (error && error.includes('Network Error') && !dismissedError) {
+      setServerError(true);
+    } else {
+      setServerError(false);
+    }
+  }, [error, dismissedError]);
+
+  // Retry connection to server
+  const handleRetryConnection = () => {
+    window.location.reload();
+  };
+
+  // Dismiss server error banner
+  const handleDismissError = () => {
+    setDismissedError(true);
+  };
+
   const handleError = (error) => {
     showToast(error.message || 'Something went wrong!', 'error');
   };
@@ -118,14 +188,52 @@ const App = () => {
     showToast(message, 'success');
   };
 
+  // Handle Vite development server errors/reconnects
+  useEffect(() => {
+    const handleViteReconnect = () => {
+      console.log('Vite server reconnected - reloading app state');
+
+      // You might want to refresh data here instead of full reload
+      // For example, refreshUser(), fetchNotes(), etc.
+
+      // Alternatively, for a clean slate:
+      // window.location.reload();
+    };
+
+    window.addEventListener('vite:reconnect', handleViteReconnect);
+
+    // Add error boundary for uncaught HMR errors
+    const originalOnError = window.onerror;
+    window.onerror = function (message, source, lineno, colno, error) {
+      // Check if this is a Vite HMR error
+      if (message && (
+        message.includes('Vite') ||
+        message.includes('HMR') ||
+        message.includes('The server is being restarted')
+      )) {
+        console.warn('Detected Vite HMR error:', message);
+        // Don't reload immediately, let Vite handle recovery
+        return true;
+      }
+
+      // Call the original handler for other errors
+      return originalOnError ? originalOnError(message, source, lineno, colno, error) : false;
+    };
+
+    return () => {
+      window.removeEventListener('vite:reconnect', handleViteReconnect);
+      window.onerror = originalOnError;
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-zinc-900 text-white">
-        <Navbar onSearch={setSearchQuery} />
+        <Navbar onSearch={handleSearch} />
         <Background />
         {user ? (
           <Foreground
-            notes={filteredNotes}
+            notes={filteredNotes} // Use filtered notes
             loading={notesLoading}
             onCreateNote={async (note) => {
               try {
@@ -152,6 +260,7 @@ const App = () => {
               }
             }}
             onOpenChat={() => setIsChatOpen(true)}
+            searchQuery={searchQuery} // Pass search query for highlighting
           />
         ) : (
           <div className="h-[80vh] flex items-center justify-center">
@@ -170,6 +279,12 @@ const App = () => {
             </motion.div>
           </div>
         )}
+        {/* Add server connection status banner */}
+        <ServerStatusBanner
+          visible={serverError}
+          onRetry={handleRetryConnection}
+          onDismiss={handleDismissError}
+        />
       </div>
       <AnimatePresence>
         {toast && (

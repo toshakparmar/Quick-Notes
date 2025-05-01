@@ -5,7 +5,7 @@ import { FaRegEdit } from 'react-icons/fa';
 import { MdOutlineFileDownload } from 'react-icons/md';
 import { HiOutlineClipboardDocumentList } from 'react-icons/hi2';
 
-const NoteCard = ({ note, dragConstraints, onDelete, onEdit, onView, onStatusChange, layoutId, custom }) => {
+const NoteCard = ({ note, highlightedContent, dragConstraints, onDelete, onEdit, onView, onStatusChange, layoutId, custom }) => {
   const isCompleted = note.status === true;
 
   return (
@@ -74,7 +74,7 @@ const NoteCard = ({ note, dragConstraints, onDelete, onEdit, onView, onStatusCha
         <div className="flex-1 px-3 xs:px-4 overflow-hidden">
           <p className="text-xs xs:text-sm leading-relaxed line-clamp-4
                        hover:line-clamp-none transition-all duration-200">
-            {note.note}
+            {highlightedContent || note.note}
           </p>
         </div>
 

@@ -1,12 +1,40 @@
 import apiService from "./apiService";
 
+// Fallback data for when server is unavailable during development
+const DEMO_NOTES = [
+  {
+    _id: "demo-1",
+    noteId: 1,
+    note: "Demo note - Your backend server appears to be offline. This is a placeholder note.",
+    date: new Date().toISOString(),
+    status: false,
+  },
+  {
+    _id: "demo-2",
+    noteId: 2,
+    note:
+      "To fix this, ensure your backend server is running at " +
+      apiService.getBaseUrl(),
+    date: new Date().toISOString(),
+    status: false,
+  },
+];
+
 const notesService = {
   getAllNotes: async () => {
     try {
       return await apiService.get("/quick-notes");
     } catch (error) {
       console.error("Error fetching notes:", error);
-      // Return empty array instead of throwing error to prevent UI breaking
+      // During development, return demo data when server is unavailable
+      if (
+        process.env.NODE_ENV !== "production" &&
+        (!error.status || error.message.includes("Network Error"))
+      ) {
+        console.warn("Using demo notes due to server connection issues");
+        return DEMO_NOTES;
+      }
+      // Return empty array to prevent UI breaking
       return [];
     }
   },
@@ -91,6 +119,33 @@ const notesService = {
     } catch (error) {
       console.error("Error exporting note to PDF:", error);
       throw new Error("Failed to export note to PDF");
+    }
+  },
+
+  searchNotes: async (query) => {
+    try {
+      // Search endpoint that will filter by user on the backend
+      return await apiService.get(
+        `/quick-notes/search?q=${encodeURIComponent(query)}`
+      );
+    } catch (error) {
+      console.error("Error searching notes:", error);
+
+      // During development, provide fallback search
+      if (
+        process.env.NODE_ENV !== "production" &&
+        (!error.status || error.message.includes("Network Error"))
+      ) {
+        console.warn(
+          "Using client-side search due to server connection issues"
+        );
+        const demoNotes = DEMO_NOTES.filter((note) =>
+          note.note.toLowerCase().includes(query.toLowerCase())
+        );
+        return demoNotes;
+      }
+
+      throw new Error("Failed to search notes");
     }
   },
 };

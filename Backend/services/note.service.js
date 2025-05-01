@@ -2,13 +2,21 @@ const mongoose = require("mongoose");
 const Note = require("../models/note.model");
 const { validateAndParseId } = require("../utils/db.utils");
 
+// Add this function to get user context from request
+const getUserFromRequest = (req) => {
+  return req.user && req.user._id ? req.user._id : null;
+};
+
 const tools = {
-  createNote: async (note) => {
+  createNote: async (note, userId) => {
     if (!note || typeof note !== "string" || note.trim() === "") {
       return { success: false, message: "Invalid note content." };
     }
     try {
-      const newNote = new Note({ note: note.trim() });
+      const newNote = new Note({
+        note: note.trim(),
+        userId: userId, // Add the user ID
+      });
       const savedNote = await newNote.save();
       return {
         success: true,
@@ -24,29 +32,36 @@ const tools = {
     }
   },
 
-  getNotes: async () => {
+  getNotes: async (userId) => {
     try {
-      return await Note.find();
+      // Filter by user ID if provided
+      const query = userId ? { userId } : {};
+      return await Note.find(query);
     } catch (err) {
       return { error: "Failed to fetch notes." };
     }
   },
 
-  searchNote: async (query) => {
+  searchNote: async (query, userId) => {
     try {
       if (!query || typeof query !== "string") {
         return { error: "Invalid search query" };
       }
-      const notes = await Note.find({
-        note: { $regex: query, $options: "i" },
-      }).sort({ date: -1 });
+
+      // Add userId to the query if provided
+      const searchQuery = { note: { $regex: query, $options: "i" } };
+      if (userId) {
+        searchQuery.userId = userId;
+      }
+
+      const notes = await Note.find(searchQuery).sort({ date: -1 });
       return notes;
     } catch (err) {
       return { error: "Failed to search notes." };
     }
   },
 
-  updateNote: async (input) => {
+  updateNote: async (input, userId) => {
     try {
       if (!input || !input.note) {
         return {
@@ -71,8 +86,14 @@ const tools = {
         };
       }
 
+      // Add userId to query if provided
+      const findQuery = query;
+      if (userId) {
+        findQuery.userId = userId;
+      }
+
       const updatedNote = await Note.findOneAndUpdate(
-        query,
+        findQuery,
         {
           note: input.note,
           date: new Date(),
@@ -100,7 +121,7 @@ const tools = {
     }
   },
 
-  updateNoteStatus: async (input) => {
+  updateNoteStatus: async (input, userId) => {
     try {
       let query = {};
 
@@ -127,6 +148,11 @@ const tools = {
           success: false,
           message: "Status must be a boolean value",
         };
+      }
+
+      // Add userId to query if provided
+      if (userId) {
+        query.userId = userId;
       }
 
       const note = await Note.findOne(query);
@@ -159,9 +185,16 @@ const tools = {
     }
   },
 
-  deleteNote: async (noteId) => {
+  deleteNote: async (noteId, userId) => {
     try {
-      const noteExists = await Note.findOne({ noteId: parseInt(noteId) });
+      const query = { noteId: parseInt(noteId) };
+
+      // Add userId to query if provided
+      if (userId) {
+        query.userId = userId;
+      }
+
+      const noteExists = await Note.findOne(query);
       if (!noteExists) {
         return {
           success: false,
@@ -169,9 +202,7 @@ const tools = {
         };
       }
 
-      const deletedNote = await Note.findOneAndDelete({
-        noteId: parseInt(noteId),
-      });
+      const deletedNote = await Note.findOneAndDelete(query);
       return {
         success: true,
         message: "Note deleted successfully",
@@ -186,4 +217,7 @@ const tools = {
   },
 };
 
-module.exports = tools;
+module.exports = {
+  ...tools,
+  getUserFromRequest,
+};

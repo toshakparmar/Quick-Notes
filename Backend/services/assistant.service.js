@@ -14,7 +14,8 @@ let pendingStatusUpdate = null;
 let pendingDelete = null;
 let conversationMessages = [{ role: "user", content: SYSTEM_PROMPT }];
 
-const quickNotesAssistant = async (query) => {
+// Add userId parameter
+const quickNotesAssistant = async (query, userId = null) => {
   try {
     // Handle pending delete
     if (pendingDelete && !isNaN(query)) {
@@ -25,7 +26,8 @@ const quickNotesAssistant = async (query) => {
       };
       pendingDelete = null;
 
-      const observation = await tools[action.function](action.input);
+      // Pass userId to the tool function
+      const observation = await tools[action.function](action.input, userId);
       const formattedResponse = await formatResponseMessage(
         action.function,
         observation,
@@ -69,7 +71,8 @@ const quickNotesAssistant = async (query) => {
       };
       pendingStatusUpdate = null;
 
-      const observation = await tools[action.function](action.input);
+      // Pass userId to the tool function
+      const observation = await tools[action.function](action.input, userId);
       const formattedResponse = await formatResponseMessage(
         action.function,
         observation,
@@ -93,7 +96,8 @@ const quickNotesAssistant = async (query) => {
         };
         pendingDelete = null;
 
-        const observation = await tools[action.function](action.input);
+        // Pass userId to the tool function
+        const observation = await tools[action.function](action.input, userId);
         const formattedResponse = await formatResponseMessage(
           action.function,
           observation,
@@ -207,7 +211,8 @@ const quickNotesAssistant = async (query) => {
           throw new Error(`Invalid tool: ${action.function}`);
         }
 
-        const observation = await func(action.input);
+        // Pass userId to the tool function
+        const observation = await func(action.input, userId);
         if (!observation) {
           throw new Error("Tool returned no result");
         }

@@ -8,12 +8,15 @@ export const useNotes = () => {
   const initialized = useRef(false);
   const mounted = useRef(false);
   const [animatingNoteId, setAnimatingNoteId] = useState(null);
+  const [connectionRetries, setConnectionRetries] = useState(0);
+  const maxRetries = 2; // Maximum number of retries
 
   const fetchNotes = async (force = false) => {
     if ((!force && initialized.current) || !mounted.current) return;
 
     try {
       setLoading(true);
+      setError(null);
       const data = await notesService.getAllNotes();
       if (mounted.current) {
         // Add a small stagger delay for animation purposes
@@ -22,9 +25,25 @@ export const useNotes = () => {
           initialized.current = true;
         }, 100);
       }
+      // Reset connection retries on successful fetch
+      if (connectionRetries > 0) {
+        setConnectionRetries(0);
+      }
     } catch (err) {
       if (mounted.current) {
-        setError(err.message);
+        setError(err.message || "Failed to fetch notes");
+
+        // Track connection retries for non-401 errors (auth issues)
+        if (!err.status || err.status !== 401) {
+          // Implement exponential backoff for retries
+          if (connectionRetries < maxRetries) {
+            const retryDelay = Math.pow(2, connectionRetries) * 1000; // Exponential backoff
+            setTimeout(() => {
+              setConnectionRetries((prev) => prev + 1);
+              fetchNotes(true);
+            }, retryDelay);
+          }
+        }
       }
     } finally {
       if (mounted.current) {
@@ -136,5 +155,6 @@ export const useNotes = () => {
     getNoteById,
     updateNoteStatus,
     animatingNoteId,
+    connectionRetries,
   };
 };

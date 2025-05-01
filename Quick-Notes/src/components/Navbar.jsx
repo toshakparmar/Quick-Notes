@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaCog, FaSignOutAlt, FaRegBell, FaSignInAlt } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import authService from '../services/authService';
+import notesService from '../services/notesService';
 import LoginModal from './auth/LoginModal';
 import RegisterModal from './auth/RegisterModal';
 
@@ -14,17 +15,16 @@ const Navbar = ({ onSearch }) => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showRegisterModal, setShowRegisterModal] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
 
     const handleRegister = async (userData) => {
         try {
             await authService.register(userData);
             setShowRegisterModal(false);
             setShowLoginModal(true);
-            // Show success message
             console.log('Registration successful! Please login.');
         } catch (error) {
             console.error('Registration failed:', error.response?.data?.message || error.message);
-            // Handle registration error (you can add toast notification here)
         }
     };
 
@@ -38,7 +38,6 @@ const Navbar = ({ onSearch }) => {
         setShowLoginModal(true);
     };
 
-    // Handle scroll effect
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
@@ -47,12 +46,30 @@ const Navbar = ({ onSearch }) => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const handleSearch = (e) => {
+    const handleSearch = async (e) => {
         e.preventDefault();
-        onSearch(searchQuery);
+
+        if (!searchQuery.trim()) {
+            onSearch('');
+            return;
+        }
+
+        setIsSearching(true);
+
+        try {
+            if (user) {
+                const results = await notesService.searchNotes(searchQuery.trim());
+                onSearch(searchQuery.trim(), results);
+            } else {
+                onSearch(searchQuery.trim());
+            }
+        } catch (error) {
+            console.error('Search failed:', error);
+        } finally {
+            setIsSearching(false);
+        }
     };
 
-    // Update the navbar animation variants
     const navVariants = {
         hidden: { y: -100, opacity: 0 },
         visible: {
@@ -63,14 +80,12 @@ const Navbar = ({ onSearch }) => {
     };
 
     const containerVariants = {
-        expanded: { height: "4.5rem" },  // Increased from 3.5rem
-        collapsed: { height: "3.5rem" }  // Increased from 2.75rem
+        expanded: { height: "4.5rem" },
+        collapsed: { height: "3.5rem" }
     };
 
-    // Add new handlers
     const handleLogin = async (credentials) => {
         try {
-            // Add validation
             if (!credentials.email || !credentials.password) {
                 throw new Error("Please enter both email and password");
             }
@@ -79,16 +94,13 @@ const Navbar = ({ onSearch }) => {
             setShowLoginModal(false);
         } catch (error) {
             console.error('Login failed:', error);
-
-            // Provide user feedback (you should add a toast or alert system)
             const errorMessage = error.message || "Login failed. Please try again.";
-            alert(errorMessage); // Replace with your notification system
+            alert(errorMessage);
         }
     };
 
     const handleLogout = () => {
         logout();
-        // Remove the window.location.reload()
     };
 
     return (
@@ -108,7 +120,6 @@ const Navbar = ({ onSearch }) => {
                     className="container mx-auto px-2 sm:px-4"
                 >
                     <div className="flex items-center h-full justify-between gap-2 sm:gap-4">
-                        {/* Logo Section */}
                         <Link to="/" className="flex-shrink-0 group">
                             <motion.div
                                 whileHover={{ scale: 1.05, y: -2 }}
@@ -129,7 +140,6 @@ const Navbar = ({ onSearch }) => {
                             </motion.div>
                         </Link>
 
-                        {/* Search Bar */}
                         <div className="hidden sm:block flex-1 max-w-xl mx-2 sm:mx-4">
                             <form onSubmit={handleSearch} className="relative group">
                                 <input
@@ -147,15 +157,19 @@ const Navbar = ({ onSearch }) => {
                                     whileHover={{ scale: 1.1, rotate: 15 }}
                                     whileTap={{ scale: 0.9 }}
                                     type="submit"
+                                    disabled={isSearching}
                                     className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2"
                                 >
-                                    <FaSearch className="text-zinc-400 group-hover:text-blue-400 
-                                    transition-colors duration-300" />
+                                    {isSearching ? (
+                                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <FaSearch className="text-zinc-400 group-hover:text-blue-400 
+                                        transition-colors duration-300" />
+                                    )}
                                 </motion.button>
                             </form>
                         </div>
 
-                        {/* User Section */}
                         <div className="flex items-center gap-2 sm:gap-4">
                             {!user ? (
                                 <div className="flex items-center gap-2">
@@ -166,11 +180,9 @@ const Navbar = ({ onSearch }) => {
                                         className="relative px-5 py-2 text-sm font-medium overflow-hidden
                              rounded-xl transition-all duration-300 group flex items-center gap-2"
                                     >
-                                        {/* Gradient background */}
                                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500 
                                   to-blue-600 transition-all duration-300 group-hover:opacity-90" />
 
-                                        {/* Animated shine effect */}
                                         <div className="absolute inset-0 opacity-0 group-hover:opacity-20 
                                   transition-opacity duration-300">
                                             <div className="absolute inset-0 translate-x-full 
@@ -178,7 +190,6 @@ const Navbar = ({ onSearch }) => {
                                     bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                                         </div>
 
-                                        {/* Button content */}
                                         <FaSignInAlt className="relative text-white w-4 h-4 group-hover:scale-110 transition-transform" />
                                         <span className="relative text-white group-hover:text-zinc-100">
                                             Sign In
@@ -292,9 +303,8 @@ const Navbar = ({ onSearch }) => {
                     </div>
                 </motion.div>
             </motion.nav>
-            <div className="h-12 sm:h-14 transition-all duration-300" /> {/* Increased spacer height */}
+            <div className="h-12 sm:h-14 transition-all duration-300" />
 
-            {/* Add modals */}
             <AnimatePresence mode="wait">
                 {showLoginModal && (
                     <LoginModal
