@@ -89,11 +89,59 @@ body {
   background-color: rgb(113 113 122);
 }
 
-@keyframes shine {
+/* Custom cursors */
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grabbing {
+  cursor: grabbing;
+}
+
+.hover\:cursor-pointer:hover {
+  cursor: pointer;
+}
+
+/* Add smooth animations for state changes */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
   from {
-    transform: translateX(-100%);
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
-    transform: translateX(100%);
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* Add these animation utility classes for note state changes */
+.note-status-change-enter {
+  transform: scale(1);
+}
+.note-status-change-active {
+  transform: scale(1.05);
+  transition: transform 0.2s;
+}
+.note-status-change-exit {
+  transform: scale(1);
+  transition: transform 0.2s;
 }

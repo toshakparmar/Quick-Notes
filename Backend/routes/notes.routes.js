@@ -50,15 +50,25 @@ router.put("/update/:id", async (req, res) => {
   }
 });
 
+// Make sure the update-status route is properly defined
 router.put("/update-status/:id", async (req, res) => {
   try {
-    const updatedNote = await Note.updateOne(
-      { _id: req.params.id },
-      { status: req.body.status }
+    const updatedNote = await Note.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true } // Return the updated document
     );
+
+    if (!updatedNote) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+
     res.json(updatedNote);
   } catch (err) {
-    res.status(500).json({ error: "An error occurred while updating a note." });
+    console.error("Error updating note status:", err);
+    res
+      .status(500)
+      .json({ error: "An error occurred while updating note status." });
   }
 });
 

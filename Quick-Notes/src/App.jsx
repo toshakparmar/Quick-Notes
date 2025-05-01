@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion'; // Fix: Add motion import
 import Background from './components/layout/Background';
 import Foreground from './components/layout/Foreground/index.jsx';
 import Toast from './components/ui/Toast';
 import { useNotes } from './hooks/useNotes';
 import { useChat } from './hooks/useChat';
 import { useToast } from './hooks/useToast';
-import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
+import { useAuth } from './contexts/AuthContext.jsx';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -46,12 +46,51 @@ class ErrorBoundary extends React.Component {
 }
 
 const App = () => {
-  const { user } = useAuth();
-  const { notes, loading, error, createNote, updateNote, deleteNote } = useNotes();
+  const { user, loading, authError, refreshUser } = useAuth();
+  const { notes, loading: notesLoading, error, createNote, updateNote, deleteNote } = useNotes();
   const { messages, sendMessage, loading: chatLoading } = useChat();
   const { toast, showToast, hideToast } = useToast();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Show auth errors
+  useEffect(() => {
+    if (authError) {
+      showToast(authError, 'error');
+    }
+  }, [authError, showToast]);
+
+  // Re-verify auth when the app loads
+  useEffect(() => {
+    // Only run once when component mounts
+    const lastRefresh = sessionStorage.getItem('lastAuthRefresh');
+    const now = Date.now();
+
+    // Only refresh if it's been more than 5 minutes
+    if (!lastRefresh || now - parseInt(lastRefresh) > 5 * 60 * 1000) {
+      refreshUser();
+      sessionStorage.setItem('lastAuthRefresh', now.toString());
+    }
+
+    // Handle page visibility changes (e.g., when user returns to the tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const lastVisibilityRefresh = sessionStorage.getItem('lastVisibilityRefresh');
+        const currentTime = Date.now();
+
+        // Only refresh if it's been more than 2 minutes since last visibility refresh
+        if (!lastVisibilityRefresh || currentTime - parseInt(lastVisibilityRefresh) > 2 * 60 * 1000) {
+          refreshUser();
+          sessionStorage.setItem('lastVisibilityRefresh', currentTime.toString());
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshUser]);
 
   const filteredNotes = useMemo(() => {
     if (!searchQuery.trim()) return notes;
@@ -87,7 +126,7 @@ const App = () => {
         {user ? (
           <Foreground
             notes={filteredNotes}
-            loading={loading}
+            loading={notesLoading}
             onCreateNote={async (note) => {
               try {
                 await createNote(note);

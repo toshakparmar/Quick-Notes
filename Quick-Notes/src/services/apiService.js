@@ -1,24 +1,43 @@
 import axios from "axios";
 
+const API_BASE_URL = "http://localhost:8080";
+
 const apiService = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: false,
 });
 
-// Update response interceptor
+// Request interceptor
+apiService.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Make sure we use proper Bearer format
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    console.error("Request error:", error);
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor
 apiService.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    console.error("API Error:", error.response?.data || error.message);
-
-    // Format error message based on server response
-    if (error.response?.status === 500) {
-      // Log detailed error for debugging
-      console.error("Server error details:", error.response?.data);
-      error.message = "Server error occurred. Please try again later.";
+    // Only log errors that aren't auth/me 401s (which are expected when not logged in)
+    if (
+      !(error.config.url.includes("/auth/me") && error.response?.status === 401)
+    ) {
+      console.error("API Error:", error.response?.data || error.message);
     }
+
+    // Don't remove token here - let AuthContext handle session management
 
     return Promise.reject({
       status: error.response?.status,
@@ -28,6 +47,7 @@ apiService.interceptors.response.use(
   }
 );
 
+// Simplified methods
 const get = async (url) => {
   try {
     return await apiService.get(url);

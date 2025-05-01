@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useNotes } from '../../../hooks/useNotes';
 import { useChat } from '../../../hooks/useChat';
@@ -9,13 +9,13 @@ import ModalsContainer from './ModalsContainer';
 import ViewModal from '../../modals/ViewModal';
 import Toast from '../../ui/Toast';
 import { useToast } from '../../../hooks/useToast';
-import { use } from 'react';
 
 const Foreground = () => {
     const ref = useRef(null);
-    const { notes, createNote, updateNote, deleteNote, getNoteById, updateNoteStatus, fetchNotes } = useNotes();
-    const { messages, sendMessage, loading } = useChat();
+    const { notes, createNote, updateNote, deleteNote, updateNoteStatus, fetchNotes, loading: notesLoading } = useNotes();
+    const { messages, sendMessage, loading: chatLoading } = useChat();
     const { toast, showToast } = useToast();
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Modal States
     const [modalStates, setModalStates] = useState({
@@ -54,10 +54,16 @@ const Foreground = () => {
     // Note Operations with Refresh
     const handleNoteOperation = async (operation, ...args) => {
         try {
-            await operation(...args);
-            let operationName = "";
+            setIsProcessing(true);
 
-            switch (operation.name) {
+            // First set optimistic UI updates
+            const operationType = operation.name;
+
+            // Execute the actual operation
+            const result = await operation(...args);
+
+            let operationName = "";
+            switch (operationType) {
                 case "createNote":
                     operationName = "Created";
                     break;
@@ -75,39 +81,59 @@ const Foreground = () => {
             }
 
             showToast(`Note ${operationName} successfully!`, 'success');
-            await fetchNotes(); // Refresh notes after operation
 
+            // Only refresh notes if not already done by the operation
+            if (operationType !== 'updateNoteStatus') {
+                await fetchNotes();
+            }
+
+            return result;
         } catch (error) {
-            showToast(error.message, 'error');
+            console.error('Operation failed:', error);
+            showToast(error.message || 'Operation failed!', 'error');
+            throw error; // Re-throw to allow further handling
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     // Add status update handler
     const handleStatusUpdate = async (noteId, currentStatus) => {
         try {
-            await handleNoteOperation(updateNoteStatus, noteId, !currentStatus);
-            showToast('Note status updated successfully!', 'success');
+            const result = await handleNoteOperation(updateNoteStatus, noteId, !currentStatus);
+            // No need to manually show success toast or fetch notes - 
+            // handleNoteOperation already takes care of these steps
         } catch (error) {
             console.error('Status update error:', error);
-            showToast(error.message || 'Failed to update status', 'error');
+            // Error toast already shown by handleNoteOperation
         }
     };
 
     // Modified sendMessage handler
     const handleSendMessage = async (message) => {
         await sendMessage(message);
-        await fetchNotes(); // Refresh notes after assistant interaction
+        await fetchNotes();
     };
 
     return (
         <div className="fixed w-full h-full z-[3] bg-zinc-900/20">
+            {/* Show loading indicator if any loading is happening */}
+            {(notesLoading || chatLoading || isProcessing) && (
+                <div className="fixed top-4 right-4 z-50">
+                    <div className="px-4 py-2 bg-zinc-800 rounded-xl shadow-lg flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs text-zinc-300">Loading...</span>
+                    </div>
+                </div>
+            )}
+
             <div className={backdropClass}>
                 <div className="w-full h-screen flex">
                     <NotesArea
                         ref={ref}
                         notes={notes}
                         onNoteAction={handleModal}
-                        onStatusChange={handleStatusUpdate}  // Updated this line
+                        onStatusChange={handleStatusUpdate}
                     />
                 </div>
 
@@ -126,7 +152,7 @@ const Foreground = () => {
                         onClose={() => handleModal('isChatOpen', false)}
                         messages={messages}
                         onSendMessage={handleSendMessage}
-                        loading={loading}
+                        loading={chatLoading} // Fix: use chatLoading instead of loading
                         onOperationComplete={fetchNotes}
                         onConfirm={(value) => handleNoteOperation(value)}
                         onCancel={() => handleModal('isChatOpen', false)}

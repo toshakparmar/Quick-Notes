@@ -68,12 +68,21 @@ router.post("/login", async (req, res) => {
 // Get current user
 router.get("/me", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select("-password");
+    // User is already attached to req by the auth middleware
+    const user = req.user;
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    res.json(user);
+
+    res.json({
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      avatar: user.avatar,
+    });
   } catch (error) {
+    console.error("Error fetching user:", error);
     res.status(500).json({ message: "Error fetching user" });
   }
 });

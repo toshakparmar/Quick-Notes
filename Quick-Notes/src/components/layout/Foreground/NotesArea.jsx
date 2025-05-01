@@ -6,10 +6,16 @@ import useWindowSize from '../../../hooks/useWindowSize';
 const NotesArea = forwardRef(({ notes, onNoteAction, onStatusChange }, ref) => {
     const { width } = useWindowSize();
     const [key, setKey] = useState(0);
+    const [previousNotes, setPreviousNotes] = useState([]);
 
     useEffect(() => {
         setKey(prev => prev + 1);
     }, [width]);
+
+    // Update when notes change to enable proper animation
+    useEffect(() => {
+        setPreviousNotes(notes);
+    }, [notes]);
 
     return (
         <div

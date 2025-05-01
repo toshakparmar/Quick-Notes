@@ -3,16 +3,18 @@ import apiService from "./apiService";
 const notesService = {
   getAllNotes: async () => {
     try {
-      return await apiService.get("/quick-notes"); // Updated endpoint
+      return await apiService.get("/quick-notes");
     } catch (error) {
       console.error("Error fetching notes:", error);
-      throw error;
+      // Return empty array instead of throwing error to prevent UI breaking
+      return [];
     }
   },
 
   createNote: async (noteData) => {
     try {
-      return await apiService.post("/create", { note: noteData });
+      // Fix the endpoint to match backend route
+      return await apiService.post("/quick-notes/create", { note: noteData });
     } catch (error) {
       console.error("Error creating note:", error);
       throw new Error("Failed to create note");
@@ -21,7 +23,7 @@ const notesService = {
 
   updateNote: async (id, noteData) => {
     try {
-      const response = await apiService.put(`/update/${id}`, {
+      const response = await apiService.put(`/quick-notes/update/${id}`, {
         note: noteData,
       });
       if (!response) {
@@ -40,7 +42,7 @@ const notesService = {
 
   deleteNote: async (id) => {
     try {
-      return await apiService.delete(`/delete/${id}`);
+      return await apiService.delete(`/quick-notes/delete/${id}`);
     } catch (error) {
       console.error("Error deleting note:", error);
       throw new Error("Failed to delete note");
@@ -59,9 +61,13 @@ const notesService = {
 
   updateNoteStatus: async (id, status) => {
     try {
-      const response = await apiService.put(`/update-status/${id}`, {
-        status: Boolean(status),
-      });
+      // Fix the endpoint to include the correct path
+      const response = await apiService.put(
+        `/quick-notes/update-status/${id}`,
+        {
+          status: Boolean(status),
+        }
+      );
 
       if (!response) {
         throw new Error("No response from server");

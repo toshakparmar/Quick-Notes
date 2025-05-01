@@ -1,52 +1,116 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import notesService from "../services/notesService";
 
 export const useNotes = () => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const initialized = useRef(false);
+  const mounted = useRef(false);
+  const [animatingNoteId, setAnimatingNoteId] = useState(null);
 
-  const fetchNotes = async () => {
+  const fetchNotes = async (force = false) => {
+    if ((!force && initialized.current) || !mounted.current) return;
+
     try {
       setLoading(true);
       const data = await notesService.getAllNotes();
-      setNotes(data);
+      if (mounted.current) {
+        // Add a small stagger delay for animation purposes
+        setTimeout(() => {
+          setNotes(data);
+          initialized.current = true;
+        }, 100);
+      }
+    } catch (err) {
+      if (mounted.current) {
+        setError(err.message);
+      }
+    } finally {
+      if (mounted.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    mounted.current = true;
+    fetchNotes();
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const createNote = async (note) => {
+    try {
+      setLoading(true);
+      const result = await notesService.createNote(note);
+      await fetchNotes(true);
+      return { success: true, data: result };
     } catch (err) {
       setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchNotes();
-  }, []);
-
-  const createNote = async (note) => {
+  const updateNote = async (id, note) => {
     try {
-      await notesService.createNote(note);
-      await fetchNotes();
+      setAnimatingNoteId(id);
+      await notesService.updateNote(id, note);
+      await fetchNotes(true);
+      setTimeout(() => setAnimatingNoteId(null), 500);
     } catch (err) {
       setError(err.message);
       throw err;
     }
   };
 
-  const updateNote = async (id, note) => {
+  const updateNoteStatus = async (id, status) => {
     try {
-      await notesService.updateNote(id, note);
-      await fetchNotes();
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      setLoading(true);
+      setAnimatingNoteId(id);
+
+      // Make the API call to update status
+      const result = await notesService.updateNoteStatus(id, status);
+
+      // If the API returned updated notes, use them
+      if (result && result.notes) {
+        setNotes(result.notes);
+      } else {
+        // Otherwise, just update the note locally as a fallback
+        setNotes((prev) =>
+          prev.map((note) =>
+            note._id === id ? { ...note, status: status } : note
+          )
+        );
+      }
+
+      setTimeout(() => setAnimatingNoteId(null), 500);
+      return { success: true, data: result?.statusUpdate };
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const deleteNote = async (id) => {
     try {
+      setAnimatingNoteId(id);
+      // Optimistic UI update
+      setNotes((prev) => prev.filter((note) => note._id !== id));
+
+      // Perform actual deletion
       await notesService.deleteNote(id);
-      await fetchNotes();
+
+      // Clear animation state
+      setTimeout(() => setAnimatingNoteId(null), 500);
     } catch (err) {
+      // Restore notes on error
+      fetchNotes(true);
       setError(err.message);
       throw err;
     }
@@ -61,27 +125,6 @@ export const useNotes = () => {
     }
   };
 
-  const updateNoteStatus = async (id, status) => {
-    try {
-      setLoading(true);
-      const { statusUpdate, notes } = await notesService.updateNoteStatus(
-        id,
-        status
-      );
-
-      if (statusUpdate && notes) {
-        setNotes(notes); // Update with fresh notes
-        return { success: true, data: statusUpdate };
-      }
-      throw new Error("Failed to update note status");
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return {
     notes,
     loading,
@@ -92,5 +135,6 @@ export const useNotes = () => {
     fetchNotes,
     getNoteById,
     updateNoteStatus,
+    animatingNoteId,
   };
 };
