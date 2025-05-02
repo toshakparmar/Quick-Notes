@@ -303,7 +303,7 @@ const Navbar = ({ onSearch }) => {
                     </div>
                 </motion.div>
             </motion.nav>
-            <div className="h-12 sm:h-14 transition-all duration-300" />
+            {/* <div className="h-5 sm:h-8 transition-all duration-300" /> */}
 
             <AnimatePresence mode="wait">
                 {showLoginModal && (

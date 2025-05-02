@@ -116,7 +116,7 @@ const Foreground = () => {
     };
 
     return (
-        <div className="fixed w-full h-full z-[3] bg-zinc-900/20">
+        <div className="fixed w-full h-full z-[3] bg-zinc-900/20 mt-4">
             {/* Show loading indicator if any loading is happening */}
             {(notesLoading || chatLoading || isProcessing) && (
                 <div className="fixed top-4 right-4 z-50">
