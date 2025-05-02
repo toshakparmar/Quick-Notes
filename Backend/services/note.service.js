@@ -1,112 +1,113 @@
 const mongoose = require("mongoose");
 const Note = require("../models/note.model");
-const { validateAndParseId } = require("../utils/db.utils");
+const { ObjectId } = require("mongoose").Types;
 
-// Add this function to get user context from request
-const getUserFromRequest = (req) => {
-  return req.user && req.user._id ? req.user._id : null;
+// Helper to convert string ID to ObjectId if needed
+const toObjectId = (id) => {
+  try {
+    if (ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id)) {
+      return new ObjectId(id);
+    }
+    return id; // Return as is if not a valid ObjectId
+  } catch (err) {
+    console.error("Error converting to ObjectId:", err);
+    return id;
+  }
 };
 
-const tools = {
-  createNote: async (note, userId) => {
-    if (!note || typeof note !== "string" || note.trim() === "") {
-      return { success: false, message: "Invalid note content." };
-    }
+// Tools for the assistant with userId parameter
+module.exports = {
+  getNotes: async (_, userId) => {
     try {
+      if (!userId) {
+        return {
+          error: "User authentication required",
+          notes: [],
+        };
+      }
+
+      console.log(`Fetching notes for user ${userId}`);
+      const notes = await Note.find({ userId }).sort({ date: -1 });
+      return notes;
+    } catch (err) {
+      console.error("Error fetching notes:", err);
+      return {
+        error: err.message,
+        notes: [],
+      };
+    }
+  },
+
+  createNote: async (noteText, userId) => {
+    try {
+      if (!userId) {
+        return {
+          success: false,
+          message: "User authentication required",
+        };
+      }
+
+      console.log(`Creating note for user ${userId}: "${noteText}"`);
       const newNote = new Note({
-        note: note.trim(),
-        userId: userId, // Add the user ID
+        note: noteText,
+        userId: userId,
+        status: false,
       });
+
       const savedNote = await newNote.save();
+
       return {
         success: true,
-        message: "Note created successfully.",
+        message: "Note created successfully",
         note: savedNote,
       };
     } catch (err) {
+      console.error("Error creating note:", err);
       return {
         success: false,
-        message: "Failed to create note.",
-        error: err.message,
+        message: `Failed to create note: ${err.message}`,
       };
-    }
-  },
-
-  getNotes: async (userId) => {
-    try {
-      // Filter by user ID if provided
-      const query = userId ? { userId } : {};
-      return await Note.find(query);
-    } catch (err) {
-      return { error: "Failed to fetch notes." };
-    }
-  },
-
-  searchNote: async (query, userId) => {
-    try {
-      if (!query || typeof query !== "string") {
-        return { error: "Invalid search query" };
-      }
-
-      // Add userId to the query if provided
-      const searchQuery = { note: { $regex: query, $options: "i" } };
-      if (userId) {
-        searchQuery.userId = userId;
-      }
-
-      const notes = await Note.find(searchQuery).sort({ date: -1 });
-      return notes;
-    } catch (err) {
-      return { error: "Failed to search notes." };
     }
   },
 
   updateNote: async (input, userId) => {
     try {
-      if (!input || !input.note) {
+      if (!userId) {
         return {
           success: false,
-          message: "Note content is required",
+          message: "User authentication required",
         };
       }
 
-      let query;
-      try {
-        const id = input.noteId || input._id;
-        // Try numeric ID first
-        if (!isNaN(id)) {
-          query = { noteId: parseInt(id) };
-        } else {
-          query = validateAndParseId(id);
-        }
-      } catch (err) {
+      console.log(`Updating note for user ${userId}:`, input);
+
+      const noteId = input._id || input.noteId;
+      if (!noteId) {
         return {
           success: false,
-          message: "Invalid note ID format",
+          message: "Note ID is required",
         };
       }
 
-      // Add userId to query if provided
-      const findQuery = query;
-      if (userId) {
-        findQuery.userId = userId;
+      // Try to find the note first
+      const note = await Note.findOne({
+        $or: [{ _id: toObjectId(noteId) }, { noteId: parseInt(noteId) }],
+        userId,
+      });
+
+      if (!note) {
+        return {
+          success: false,
+          message: `Note #${noteId} not found or you don't have permission to update it`,
+        };
       }
 
-      const updatedNote = await Note.findOneAndUpdate(
-        findQuery,
-        {
-          note: input.note,
-          date: new Date(),
-        },
+      // Update the note
+      const updatedNote = await Note.findByIdAndUpdate(
+        note._id,
+        { note: input.note },
         { new: true }
       );
-
-      if (!updatedNote) {
-        return {
-          success: false,
-          message: `Note not found`,
-        };
-      }
 
       return {
         success: true,
@@ -114,6 +115,7 @@ const tools = {
         note: updatedNote,
       };
     } catch (err) {
+      console.error("Error updating note:", err);
       return {
         success: false,
         message: `Failed to update note: ${err.message}`,
@@ -123,61 +125,50 @@ const tools = {
 
   updateNoteStatus: async (input, userId) => {
     try {
-      let query = {};
-
-      if (!input || typeof input._id === "undefined") {
+      if (!userId) {
         return {
           success: false,
-          message: "Note identifier is required",
+          message: "User authentication required",
         };
       }
 
-      // Try to parse as number first for noteId
-      const numericId = parseInt(input._id);
-      if (!isNaN(numericId)) {
-        query.noteId = numericId;
-      } else if (mongoose.Types.ObjectId.isValid(input._id)) {
-        query._id = input._id;
-      } else {
-        // Search by note content if no valid ID is provided
-        query.note = input._id;
-      }
+      console.log(`Updating note status for user ${userId}:`, input);
 
-      if (typeof input.status !== "boolean") {
+      const noteId = input._id || input.noteId;
+      if (!noteId) {
         return {
           success: false,
-          message: "Status must be a boolean value",
+          message: "Note ID is required",
         };
       }
 
-      // Add userId to query if provided
-      if (userId) {
-        query.userId = userId;
-      }
+      // Try to find the note first
+      const note = await Note.findOne({
+        $or: [{ _id: toObjectId(noteId) }, { noteId: parseInt(noteId) }],
+        userId,
+      });
 
-      const note = await Note.findOne(query);
       if (!note) {
         return {
           success: false,
-          message: "Note not found",
+          message: `Note #${noteId} not found or you don't have permission to update it`,
         };
       }
 
+      // Update the note status
       const updatedNote = await Note.findByIdAndUpdate(
         note._id,
-        {
-          status: input.status,
-          date: new Date(),
-        },
+        { status: !!input.status }, // Convert to boolean
         { new: true }
       );
 
       return {
         success: true,
-        message: "Note status updated successfully",
+        message: `Note marked as ${input.status ? "completed" : "pending"}`,
         note: updatedNote,
       };
     } catch (err) {
+      console.error("Error updating note status:", err);
       return {
         success: false,
         message: `Failed to update note status: ${err.message}`,
@@ -187,37 +178,85 @@ const tools = {
 
   deleteNote: async (noteId, userId) => {
     try {
-      const query = { noteId: parseInt(noteId) };
-
-      // Add userId to query if provided
-      if (userId) {
-        query.userId = userId;
-      }
-
-      const noteExists = await Note.findOne(query);
-      if (!noteExists) {
+      if (!userId) {
         return {
           success: false,
-          message: "This note doesn't exist or has already been deleted.",
+          message: "User authentication required",
         };
       }
 
-      const deletedNote = await Note.findOneAndDelete(query);
+      console.log(`Deleting note for user ${userId}: ${noteId}`);
+
+      // First, try to find the note by numeric ID
+      let note = null;
+
+      // Check if noteId is a number
+      if (!isNaN(noteId)) {
+        note = await Note.findOne({
+          noteId: parseInt(noteId),
+          userId,
+        });
+      }
+
+      // If not found by numeric ID, try ObjectId
+      if (!note && ObjectId.isValid(noteId)) {
+        try {
+          note = await Note.findOne({
+            _id: new ObjectId(noteId),
+            userId,
+          });
+        } catch (objectIdError) {
+          console.log(
+            `Invalid ObjectId format for ${noteId}, skipping ObjectId lookup`
+          );
+        }
+      }
+
+      if (!note) {
+        return {
+          success: false,
+          message: `Note #${noteId} not found or you don't have permission to delete it`,
+        };
+      }
+
+      // Delete the note using the found document's _id
+      await Note.deleteOne({ _id: note._id });
+
       return {
         success: true,
         message: "Note deleted successfully",
-        note: deletedNote,
+        note,
       };
     } catch (err) {
+      console.error("Error deleting note:", err);
       return {
         success: false,
         message: `Failed to delete note: ${err.message}`,
       };
     }
   },
-};
 
-module.exports = {
-  ...tools,
-  getUserFromRequest,
+  searchNote: async (query, userId) => {
+    try {
+      if (!userId) {
+        return [];
+      }
+
+      console.log(`Searching notes for user ${userId}: "${query}"`);
+
+      // Search notes belonging to the user
+      const notes = await Note.find({
+        userId,
+        note: { $regex: query, $options: "i" },
+      }).sort({ date: -1 });
+
+      return notes;
+    } catch (err) {
+      console.error("Error searching notes:", err);
+      return {
+        error: err.message,
+        notes: [],
+      };
+    }
+  },
 };

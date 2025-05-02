@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import assistantService from "../services/assistantService";
+import notesService from "../services/notesService"; // Add this import
 
 export const useChat = () => {
   const [messages, setMessages] = useState([]);
